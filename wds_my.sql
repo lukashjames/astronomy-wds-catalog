@@ -1,7 +1,7 @@
 CREATE TABLE wds (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `wds` CHAR(10) COMMENT 'WDS name (based on J2000 position)',
-    `disc` VARCHAR(7) COMMENT 'Discoverer Code (1 to 4 letters) and Number (5)',
+    `disc` VARCHAR(10) COMMENT 'Discoverer Code (1 to 4 letters) and Number (5)',
     `comp` VARCHAR(5) COMMENT 'Components when more than 2 (1)',
     `obs1` YEAR COMMENT '? Date of first satisfactory observation, yr',
     `obs2` YEAR COMMENT '? Date of last satisfactory observation, yr',

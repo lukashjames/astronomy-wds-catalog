@@ -1,10 +1,39 @@
 #!/usr/bin/perl
 
 use strict;
-use warnings;
+#use warnings;
 use PerlIO::gzip;
 use DBI;
-use Data::Dumper;
+use Getopt::Long;
+use Term::ReadPassword;
+use FindBin qw/$Bin/;
+#use Data::Dumper;
+
+my ($dbhost, $dbuser, $dbpass, $dbname, $quiet);
+usage() if scalar @ARGV < 1;
+GetOptions(
+    'dbhost:s' => \$dbhost,
+    'dbuser:s' => \$dbuser,
+    'dbpass!' => \$dbpass,
+    'dbname:s' => \$dbname,
+    'quiet!' => \$quiet,
+) or die("Error in command line arguments\n");
+
+$dbhost ||= 'localhost';
+unless ($dbuser) {
+    print STDERR "You need MySQL username\n";
+    exit -1;
+}
+unless ($dbname) {
+    print STDERR "You need MySQL database name\n";
+    exit -1;
+}
+
+if ($dbpass) {
+    $dbpass = read_password('Enter MySQL password: ');
+} else {
+    $dbpass = '';
+}
 
 my $bytes_str =<< 'EOS';
    1- 10  A10   ---     WDS     WDS name (based on J2000 position)
@@ -56,12 +85,11 @@ while ($bytes_str =~ /^(.{8})  (.{4})/gms)
 }
 #print Dumper (@bytes);die;
 
-our $db = get_connect ();
-if ( ! $db)
-{
-    print STDERR "Connection failed\n";
-    exit -1;
-}
+our $db = get_connect ($dbhost, $dbuser, $dbpass, $dbname);
+#if ( ! $db) {
+#    print STDERR "Connection failed\n";
+#    exit -1;
+#}
 
 my $db_fields = get_wds_fields ();
 my @pattern = map { '?' } @$db_fields;
@@ -70,16 +98,15 @@ my $sql = 'INSERT INTO wds (' . join (', ', @$db_fields) . ') VALUES (' . join (
 #print "$sql\n";die;
 my $sth = $db->prepare ($sql);
 
-open my $F, '<:gzip', 'wds.dat.gz' or die "open() error: $!\n";
+open my $F, '<:gzip', $FindBin::Bin . '/wds.dat.gz' or die "open() error: $!\n";
 
 
 while (my $line = <$F>)
 {
     my @item = ('DEFAULT');
-    print $line;
+    print $line unless $quiet;
     chomp $line;
     #print;die;
-    #my @item = unpack ('A10 A7 A5 x1 A4 x1 A4 x1 A4 x1 A3 x1 A3 x1 A5 x1 A6 A5 x1 A5 x1 A10 A4', $line);
     for (@bytes)
     {
         #print Dumper ($_);die;
@@ -94,18 +121,35 @@ close $F;
 
 sub get_connect
 {
-    my $db = DBI->connect ('DBI:mysql:wds', 'user', 'm4r14db_u53r', {'RaiseError' => 0});
-    return (defined $db ? $db : 0);
+    my ($host, $user, $pass, $dbname) = @_;
+    my $db = DBI->connect ('DBI:mysql:' . $dbname, $user, $pass, {'RaiseError' => 0});
+    if (!$db and DBI->err) {
+        print STDERR "Connection failed: ", DBI->errstr, "\n";
+        exit -1;
+    }
+    return $db;
 }
 
 # извлечем из таблицы список полей
 sub get_wds_fields
 {
     my $res = $db->selectcol_arrayref (q/SELECT column_name FROM information_schema.columns WHERE table_name = 'wds' ORDER BY ordinal_position/);
-    if ($db->err)
-    {
-        print STDERR 'Error: get_wds_fields(): ' . $db->errstr, "\n";
+    if ($db->err) {
+        print STDERR 'Error: get_gcvs_fields(): ' . $db->errstr, "\n";
         exit -1;
     }
     return $res;
+}
+
+sub usage
+{
+    print STDOUT qq/
+Usage: $0 [[--dbhost=db.myserver.org] --dbuser=username [--dbpasswd] --dbname=databasename [--quiet]]
+    --dbhost Database host (default - localhost)
+    --dbuser Username for database (required option)
+    --dbpass Database password will be prompted (default - empty password)
+    --dbname Database name (required option)
+    --quiet  Do not print anything (quiet mode)
+/;
+    exit 0;
 }
