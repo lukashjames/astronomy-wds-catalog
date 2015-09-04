@@ -12,6 +12,24 @@ The Washington Visual Double Star Catalog (WDS), Version 2015-09-01
 
 *Mason B.D., Wycoff G.L., Hartkopf W.I., Douglass G.G., Worley C.E.* Astron. J. 122, 3466 (2001)
 
+About files
+-----------
+* wds_cat.sql.bz2 — WDS catalogue in SQL format. Bzipped. Tested in MariaDB (version 10.0.21-MariaDB). Contains two tables. Table *wds* is the main table. Table *wds_constell* contains constellation names of double stars. You can join these tables like:
+
+    SELECT ... FROM `wds` w
+    INNER JOIN `wds_constell` c ON (w.id = c.wds_id)
+    WHERE ...
+
+* wds2sql.pl — simple Perl script for importing text catalogue from B/wds into database. See below about usage.
+
+* wds_my.sql — table structure for Perl script.
+
+* utils/get_constell.pl — if you want to determine constellation by equatorial coordinates of double star. Using script from project [astronomy-get-constellation-by-coords](https://bitbucket.org/lukashjames/astronomy-get-constellation-by-coords). If you want use this util, you must change path to the script. Open file get_constell.pl and find line, contains this code:
+
+    my $script_name = '../constByCoord/constByCoords.pl';
+
+Change path to file constByCoords.pl and save script.
+
 Requirements:
 -------------
 
